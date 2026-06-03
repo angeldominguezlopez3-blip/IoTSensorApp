@@ -4,10 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ejemplo.iot.data.api.RetrofitInstance
 import com.ejemplo.iot.data.models.*
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
 
@@ -30,6 +32,18 @@ class MainViewModel : ViewModel() {
 
     fun loadData() {
         viewModelScope.launch {
+            _isLoading.value = true
+            // Descubrir servidor en red local
+            val found = withContext(Dispatchers.IO) {
+                RetrofitInstance.discoverServer()
+            }
+            if (!found) {
+                _error.value = "No se encontro el servidor en la red local"
+                _isLoading.value = false
+                return@launch
+            }
+
+            viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
             try {
