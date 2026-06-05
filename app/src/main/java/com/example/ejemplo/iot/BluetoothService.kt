@@ -100,7 +100,7 @@ class BluetoothService(private val context: Context) {
 
                 while (isReading && _connectionState.value == ConnectionState.CONNECTED) {
                     if (inputStream?.available() ?: 0 > 0) {
-                        val bytes = inputStream.read(buffer)
+                        val bytes = inputStream?.read(buffer) ?: 0
                         if (bytes > 0) {
                             val data = String(buffer, 0, bytes)
                             parseSensorData(data)

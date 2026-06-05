@@ -3,15 +3,13 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
 }
 
-apply(plugin = "com.google.gms.google-services")
-
 android {
     namespace = "com.ejemplo.iot"
     compileSdk = 34
 
     defaultConfig {
         applicationId = "com.ejemplo.iot"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -70,10 +68,6 @@ dependencies {
 
     // Charts
     implementation("com.github.PhilJay:MPAndroidChart:v3.1.0")
-
-    // Firebase
-    implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
-    implementation("com.google.firebase:firebase-messaging-ktx")
 
     // Permissions
     implementation("com.google.accompanist:accompanist-permissions:0.32.0")
