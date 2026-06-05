@@ -18,10 +18,8 @@ object RetrofitInstance {
     // Nombre mDNS anunciado por el backend con zeroconf
     private const val MDNS_HOST = "iot-platform.local"
 
-    // IPs de fallback: agrega aquí las IPs más comunes de tu red local.
-    // El primer intento siempre es mDNS; estas se prueban en orden si falla.
     private val FALLBACK_IPS = listOf(
-        "192.168.1.100",   // ← cambia a la IP de tu PC/servidor
+        "192.168.1.75",   // ← cambia a la IP de tu PC/servidor
         "192.168.0.100",
         "192.168.1.1",
         "10.0.0.100",

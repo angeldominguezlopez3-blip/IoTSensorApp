@@ -47,7 +47,7 @@ class MainViewModel : ViewModel() {
 
             try {
                 val api = RetrofitInstance.api
-                val readings = api.getLatestReadings(20)
+                val readings = api.getLatestReadings(100)
                 val advice = api.getIAAdvice(10)
                 val stats = api.getStatistics()
 
@@ -88,6 +88,19 @@ class MainViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Error en análisis: ${e.message}"
+            }
+        }
+    }
+
+    fun loadWeeklyHistory() {
+        viewModelScope.launch {
+            if (_serverFound.value != true) return@launch
+            try {
+                // Trae las últimas 100 lecturas para cubrir una semana
+                val readings = RetrofitInstance.api.getLatestReadings(100)
+                _sensorReadings.value = readings
+            } catch (e: Exception) {
+                // silencioso
             }
         }
     }

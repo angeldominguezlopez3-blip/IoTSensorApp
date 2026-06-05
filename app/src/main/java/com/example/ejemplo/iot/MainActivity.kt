@@ -73,6 +73,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
+            viewModel.sensorReadings.collect { readings ->
+                sensorAdapter.submitList(readings)
+                // Actualizar tarjeta de lectura actual con el más reciente
+                if (readings.isNotEmpty()) {
+                    val latest = readings[0]
+                    val dateFormat = java.text.SimpleDateFormat("HH:mm:ss dd/MM/yyyy", java.util.Locale.getDefault())
+                    binding.textCurrentTemp.text = "${String.format("%.1f", latest.temperatura)}°C"
+                    binding.textCurrentSound.text = "${latest.sonido}%"
+                    binding.textCurrentPresence.text = if (latest.presencia) "👤 Sí" else "👤 No"
+                    binding.textCurrentTime.text = "Última act: ${dateFormat.format(latest.timestamp)}"
+                    // Color de temperatura
+                    binding.textCurrentTemp.setTextColor(when {
+                        latest.temperatura > 30 -> android.graphics.Color.rgb(200, 50, 50)
+                        latest.temperatura < 15 -> android.graphics.Color.rgb(50, 100, 200)
+                        else -> android.graphics.Color.rgb(20, 100, 20)
+                    })
+                }
+            }
+        }
+
+        lifecycleScope.launch {
             viewModel.iaAdvice.collect { advice ->
                 if (advice.isNotEmpty()) {
                     binding.textLatestAdvice.text = advice[0].mensaje
