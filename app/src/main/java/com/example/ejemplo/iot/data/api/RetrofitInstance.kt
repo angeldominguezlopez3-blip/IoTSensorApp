@@ -65,13 +65,13 @@ object RetrofitInstance {
     private fun tryConnect(baseUrl: String): Boolean {
         return try {
             val client = OkHttpClient.Builder()
-                .connectTimeout(2, TimeUnit.SECONDS)
-                .readTimeout(3, TimeUnit.SECONDS)
+                .connectTimeout(1, TimeUnit.SECONDS)
+                .readTimeout(2, TimeUnit.SECONDS)
                 .build()
             val response = client
                 .newCall(Request.Builder().url("$baseUrl/health").build())
                 .execute()
-            response.isSuccessful
+            response.use { it.isSuccessful }  // .use() cierra el body automáticamente
         } catch (e: Exception) {
             false
         }

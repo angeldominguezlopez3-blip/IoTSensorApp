@@ -53,6 +53,10 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
+        // Mostrar mensaje mientras busca el servidor
+        binding.textError.text = "🔍 Buscando servidor en la red..."
+        binding.textError.visibility = android.view.View.VISIBLE
+
         viewModel = ViewModelProvider(this)[MainViewModel::class.java]
 
         setupRecyclerView()
@@ -66,11 +70,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeViewModel() {
-        lifecycleScope.launch {
-            viewModel.sensorReadings.collect { readings ->
-                sensorAdapter.submitList(readings)
-            }
-        }
 
         lifecycleScope.launch {
             viewModel.sensorReadings.collect { readings ->
