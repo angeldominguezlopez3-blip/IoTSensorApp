@@ -10,6 +10,7 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
@@ -30,21 +31,18 @@ class MainActivity : AppCompatActivity() {
     private val adviceRunnable = object : Runnable {
         override fun run() {
             viewModel.loadAdvice()
-            adviceHandler.postDelayed(this, 30_000) // cada 30 segundos
+            adviceHandler.postDelayed(this, 30_000)
         }
     }
 
     private val bluetoothPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
-        when {
-            permissions.all { it.value } -> {
-                Toast.makeText(this, "Permisos Bluetooth concedidos", Toast.LENGTH_SHORT).show()
-                showPairedDevicesDialog()
-            }
-            else -> {
-                Toast.makeText(this, "Se necesitan permisos Bluetooth para conectar", Toast.LENGTH_LONG).show()
-            }
+        if (permissions.all { it.value }) {
+            Toast.makeText(this, "Permisos Bluetooth concedidos", Toast.LENGTH_SHORT).show()
+            showPairedDevicesDialog()
+        } else {
+            Toast.makeText(this, "Se necesitan permisos Bluetooth para conectar", Toast.LENGTH_LONG).show()
         }
     }
 
@@ -53,7 +51,6 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        // Mostrar mensaje mientras busca el servidor
         binding.textError.text = "🔍 Buscando servidor en la red..."
         binding.textError.visibility = android.view.View.VISIBLE
 
@@ -70,24 +67,25 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun observeViewModel() {
-
         lifecycleScope.launch {
             viewModel.sensorReadings.collect { readings ->
                 sensorAdapter.submitList(readings)
-                // Actualizar tarjeta de lectura actual con el más reciente
                 if (readings.isNotEmpty()) {
                     val latest = readings[0]
-                    val dateFormat = java.text.SimpleDateFormat("HH:mm:ss dd/MM/yyyy", java.util.Locale.getDefault())
+                    val dateFormat = java.text.SimpleDateFormat(
+                        "HH:mm:ss dd/MM/yyyy", java.util.Locale.getDefault()
+                    )
                     binding.textCurrentTemp.text = "${String.format("%.1f", latest.temperatura)}°C"
                     binding.textCurrentSound.text = "${latest.sonido}%"
                     binding.textCurrentPresence.text = if (latest.presencia) "👤 Sí" else "👤 No"
                     binding.textCurrentTime.text = "Última act: ${dateFormat.format(latest.timestamp)}"
-                    // Color de temperatura
-                    binding.textCurrentTemp.setTextColor(when {
-                        latest.temperatura > 30 -> android.graphics.Color.rgb(200, 50, 50)
-                        latest.temperatura < 15 -> android.graphics.Color.rgb(50, 100, 200)
-                        else -> android.graphics.Color.rgb(20, 100, 20)
-                    })
+                    binding.textCurrentTemp.setTextColor(
+                        when {
+                            latest.temperatura > 30 -> android.graphics.Color.rgb(200, 50, 50)
+                            latest.temperatura < 15 -> android.graphics.Color.rgb(50, 100, 200)
+                            else -> android.graphics.Color.rgb(20, 100, 20)
+                        }
+                    )
                 }
             }
         }
@@ -130,9 +128,7 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             viewModel.serverFound.collect { found ->
                 when (found) {
-                    true -> {
-                        binding.textError.visibility = android.view.View.GONE
-                    }
+                    true -> binding.textError.visibility = android.view.View.GONE
                     false -> {
                         binding.textError.text = "⚠️ Servidor no encontrado en la red local"
                         binding.textError.visibility = android.view.View.VISIBLE
@@ -195,7 +191,8 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             bluetoothService.sensorData.collect { data ->
                 if (data.temperatura != 0f || data.sonido > 0) {
-                    binding.textBluetoothTemp.text = "Temp BT: ${String.format("%.1f", data.temperatura)}°C"
+                    binding.textBluetoothTemp.text =
+                        "Temp BT: ${String.format("%.1f", data.temperatura)}°C"
                     binding.textBluetoothSound.text = "Ruido BT: ${data.sonido}%"
                     binding.textBluetoothPresence.text =
                         if (data.presencia) "👤 Detectado" else "👤 Sin presencia"
@@ -237,7 +234,9 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        if (permissions.all { ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED }) {
+        if (permissions.all {
+                ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+            }) {
             showPairedDevicesDialog()
         } else {
             bluetoothPermissionLauncher.launch(permissions)
@@ -245,6 +244,16 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPairedDevicesDialog() {
+        // Verificar permiso BLUETOOTH_CONNECT antes de llamar .name
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S &&
+            ActivityCompat.checkSelfPermission(
+                this, Manifest.permission.BLUETOOTH_CONNECT
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            Toast.makeText(this, "Permiso Bluetooth no concedido", Toast.LENGTH_SHORT).show()
+            return
+        }
+
         val devices = bluetoothService.getPairedDevices()
         if (devices.isEmpty()) {
             Toast.makeText(
@@ -255,12 +264,33 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        val esp32Devices = devices.filter {
-            it.name?.contains("ESP32", ignoreCase = true) == true
+        // Filtrar ESP32 con verificación de permiso segura
+        val esp32Devices = devices.filter { device ->
+            val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(
+                        this, Manifest.permission.BLUETOOTH_CONNECT
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) device.name else null
+            } else {
+                device.name
+            }
+            name?.contains("ESP32", ignoreCase = true) == true
         }
 
         val deviceList = if (esp32Devices.isNotEmpty()) esp32Devices else devices
-        val deviceNames = deviceList.map { "${it.name} (${it.address})" }.toTypedArray()
+
+        // Construir nombres con verificación de permiso
+        val deviceNames = deviceList.map { device ->
+            val name = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                if (ActivityCompat.checkSelfPermission(
+                        this, Manifest.permission.BLUETOOTH_CONNECT
+                    ) == PackageManager.PERMISSION_GRANTED
+                ) device.name ?: "Dispositivo" else "Dispositivo"
+            } else {
+                device.name ?: "Dispositivo"
+            }
+            "$name (${device.address})"
+        }.toTypedArray()
 
         AlertDialog.Builder(this)
             .setTitle("Seleccionar ESP32")
