@@ -4,16 +4,12 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ejemplo.iot.data.api.RetrofitInstance
 import com.ejemplo.iot.data.models.*
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 class MainViewModel : ViewModel() {
-
-    private val api = RetrofitInstance.api
 
     private val _sensorReadings = MutableStateFlow<List<SensorReading>>(emptyList())
     val sensorReadings: StateFlow<List<SensorReading>> = _sensorReadings.asStateFlow()
@@ -30,23 +26,27 @@ class MainViewModel : ViewModel() {
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    private val _serverFound = MutableStateFlow<Boolean?>(null)
+    val serverFound: StateFlow<Boolean?> = _serverFound.asStateFlow()
+
     fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
-            // Descubrir servidor en red local
-            val found = withContext(Dispatchers.IO) {
-                RetrofitInstance.discoverServer()
-            }
-            if (!found) {
-                _error.value = "No se encontro el servidor en la red local"
-                _isLoading.value = false
-                return@launch
+            _error.value = null
+
+            // Descubrir el servidor si aún no se ha encontrado
+            if (_serverFound.value != true) {
+                val found = RetrofitInstance.discoverServer()
+                _serverFound.value = found
+                if (!found) {
+                    _error.value = "No se encontró el servidor en la red local. Verifica que el backend esté corriendo."
+                    _isLoading.value = false
+                    return@launch
+                }
             }
 
-            viewModelScope.launch {
-            _isLoading.value = true
-            _error.value = null
             try {
+                val api = RetrofitInstance.api
                 val readings = api.getLatestReadings(20)
                 val advice = api.getIAAdvice(10)
                 val stats = api.getStatistics()
@@ -56,6 +56,8 @@ class MainViewModel : ViewModel() {
                 _statistics.value = stats
             } catch (e: Exception) {
                 _error.value = "Error al cargar datos: ${e.message}"
+                // Resetear para reintentar discovery en el siguiente loadData()
+                _serverFound.value = null
                 e.printStackTrace()
             } finally {
                 _isLoading.value = false
@@ -63,10 +65,22 @@ class MainViewModel : ViewModel() {
         }
     }
 
+    fun loadAdvice() {
+        viewModelScope.launch {
+            if (_serverFound.value != true) return@launch
+            try {
+                val advice = RetrofitInstance.api.getIAAdvice(10)
+                _iaAdvice.value = advice
+            } catch (e: Exception) {
+                // Silencioso: no interrumpir la UI por un fallo de polling
+            }
+        }
+    }
+
     fun triggerAnalysis(readingId: String? = null) {
         viewModelScope.launch {
             try {
-                val result = api.analyzeLatestData()
+                val result = RetrofitInstance.api.analyzeLatestData()
                 if (result.esAnomalia) {
                     _error.value = "⚠️ ${result.consejo}"
                 } else {
@@ -74,6 +88,18 @@ class MainViewModel : ViewModel() {
                 }
             } catch (e: Exception) {
                 _error.value = "Error en análisis: ${e.message}"
+            }
+        }
+    }
+
+    fun triggerTraining() {
+        viewModelScope.launch {
+            try {
+                // POST /api/ia/train — inicia entrenamiento en background en el servidor
+                RetrofitInstance.api.trainModel()
+                _error.value = "✅ Entrenamiento iniciado en el servidor"
+            } catch (e: Exception) {
+                _error.value = "Error al iniciar entrenamiento: ${e.message}"
             }
         }
     }

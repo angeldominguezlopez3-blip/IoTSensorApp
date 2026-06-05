@@ -18,6 +18,9 @@ interface ApiService {
     @POST("api/ia/analyze/latest")
     suspend fun analyzeLatestData(): IAAnalysis
 
+    @POST("api/ia/train")
+    suspend fun trainModel(): Map<String, String>
+
     @GET("api/android/stats")
     suspend fun getStatistics(): Statistics
 

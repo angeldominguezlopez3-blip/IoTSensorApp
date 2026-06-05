@@ -5,6 +5,8 @@
     <!-- Permisos de Internet -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
 
     <!-- Permisos Bluetooth -->
     <uses-permission android:name="android.permission.BLUETOOTH" />
@@ -26,7 +28,7 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_launcher"
         android:supportsRtl="true"
-        android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar"
+        android:theme="@style/Theme.EjemploIoT"
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
 

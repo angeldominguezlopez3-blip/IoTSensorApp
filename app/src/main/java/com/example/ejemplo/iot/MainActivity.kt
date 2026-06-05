@@ -1,7 +1,6 @@
 package com.ejemplo.iot
 
 import android.Manifest
-import android.bluetooth.BluetoothDevice
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
@@ -12,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.ejemplo.iot.databinding.ActivityMainBinding
@@ -25,6 +25,14 @@ class MainActivity : AppCompatActivity() {
     private lateinit var viewModel: MainViewModel
     private lateinit var sensorAdapter: SensorAdapter
     private lateinit var bluetoothService: BluetoothService
+
+    private val adviceHandler = Handler(Looper.getMainLooper())
+    private val adviceRunnable = object : Runnable {
+        override fun run() {
+            viewModel.loadAdvice()
+            adviceHandler.postDelayed(this, 30_000) // cada 30 segundos
+        }
+    }
 
     private val bluetoothPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -45,21 +53,22 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
-        setupViewModel()
+        viewModel = ViewModelProvider(this)[MainViewModel::class.java]
+
         setupRecyclerView()
         setupBluetooth()
         setupListeners()
+        observeViewModel()
         observeBluetoothState()
 
         viewModel.loadData()
+        adviceHandler.postDelayed(adviceRunnable, 30_000)
     }
 
-    private fun setupViewModel() {
-        viewModel = MainViewModel()
+    private fun observeViewModel() {
         lifecycleScope.launch {
             viewModel.sensorReadings.collect { readings ->
                 sensorAdapter.submitList(readings)
-                updateUI()
             }
         }
 
@@ -83,7 +92,8 @@ class MainActivity : AppCompatActivity() {
 
         lifecycleScope.launch {
             viewModel.isLoading.collect { isLoading ->
-                binding.progressBar.visibility = if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
+                binding.progressBar.visibility =
+                    if (isLoading) android.view.View.VISIBLE else android.view.View.GONE
             }
         }
 
@@ -93,6 +103,21 @@ class MainActivity : AppCompatActivity() {
                     Toast.makeText(this@MainActivity, it, Toast.LENGTH_LONG).show()
                     binding.textError.text = it
                     binding.textError.visibility = android.view.View.VISIBLE
+                }
+            }
+        }
+
+        lifecycleScope.launch {
+            viewModel.serverFound.collect { found ->
+                when (found) {
+                    true -> {
+                        binding.textError.visibility = android.view.View.GONE
+                    }
+                    false -> {
+                        binding.textError.text = "⚠️ Servidor no encontrado en la red local"
+                        binding.textError.visibility = android.view.View.VISIBLE
+                    }
+                    null -> { /* pendiente */ }
                 }
             }
         }
@@ -123,18 +148,24 @@ class MainActivity : AppCompatActivity() {
                 when (state) {
                     BluetoothService.ConnectionState.CONNECTED -> {
                         binding.textBluetoothStatus.text = "✅ ESP32 Conectado"
-                        binding.textBluetoothStatus.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark))
+                        binding.textBluetoothStatus.setTextColor(
+                            ContextCompat.getColor(this@MainActivity, android.R.color.holo_green_dark)
+                        )
                         binding.buttonConnectBluetooth.text = "Desconectar"
                         Toast.makeText(this@MainActivity, "¡ESP32 conectado!", Toast.LENGTH_SHORT).show()
                         startBluetoothPolling()
                     }
                     BluetoothService.ConnectionState.CONNECTING -> {
                         binding.textBluetoothStatus.text = "🔄 Conectando..."
-                        binding.textBluetoothStatus.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_orange_dark))
+                        binding.textBluetoothStatus.setTextColor(
+                            ContextCompat.getColor(this@MainActivity, android.R.color.holo_orange_dark)
+                        )
                     }
                     BluetoothService.ConnectionState.DISCONNECTED -> {
                         binding.textBluetoothStatus.text = "❌ Desconectado"
-                        binding.textBluetoothStatus.setTextColor(ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_dark))
+                        binding.textBluetoothStatus.setTextColor(
+                            ContextCompat.getColor(this@MainActivity, android.R.color.holo_red_dark)
+                        )
                         binding.buttonConnectBluetooth.text = "Conectar ESP32"
                     }
                 }
@@ -146,7 +177,8 @@ class MainActivity : AppCompatActivity() {
                 if (data.temperatura != 0f || data.sonido > 0) {
                     binding.textBluetoothTemp.text = "Temp BT: ${String.format("%.1f", data.temperatura)}°C"
                     binding.textBluetoothSound.text = "Ruido BT: ${data.sonido}%"
-                    binding.textBluetoothPresence.text = if (data.presencia) "👤 Detectado" else "👤 Sin presencia"
+                    binding.textBluetoothPresence.text =
+                        if (data.presencia) "👤 Detectado" else "👤 Sin presencia"
                 }
             }
         }
@@ -166,11 +198,9 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkBluetoothPermissions() {
-        when {
-            bluetoothService.connectionState.value == BluetoothService.ConnectionState.CONNECTED -> {
-                bluetoothService.disconnect()
-                return
-            }
+        if (bluetoothService.connectionState.value == BluetoothService.ConnectionState.CONNECTED) {
+            bluetoothService.disconnect()
+            return
         }
 
         val permissions = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -197,7 +227,11 @@ class MainActivity : AppCompatActivity() {
     private fun showPairedDevicesDialog() {
         val devices = bluetoothService.getPairedDevices()
         if (devices.isEmpty()) {
-            Toast.makeText(this, "No hay dispositivos emparejados. Empareja tu ESP32 en Configuración > Bluetooth", Toast.LENGTH_LONG).show()
+            Toast.makeText(
+                this,
+                "No hay dispositivos emparejados. Empareja tu ESP32 en Configuración > Bluetooth",
+                Toast.LENGTH_LONG
+            ).show()
             return
         }
 
@@ -211,8 +245,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("Seleccionar ESP32")
             .setItems(deviceNames) { _, which ->
-                val device = deviceList[which]
-                bluetoothService.connectToDevice(device.address)
+                bluetoothService.connectToDevice(deviceList[which].address)
             }
             .setNegativeButton("Cancelar", null)
             .show()
@@ -234,12 +267,9 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun updateUI() {
-        // UI updates adicionales
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         bluetoothService.disconnect()
+        adviceHandler.removeCallbacks(adviceRunnable)
     }
 }

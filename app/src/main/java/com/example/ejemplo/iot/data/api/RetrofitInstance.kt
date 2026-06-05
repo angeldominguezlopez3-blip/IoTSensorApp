@@ -1,107 +1,100 @@
 package com.ejemplo.iot.data.api
 
+import android.util.Log
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.TimeUnit
 
 object RetrofitInstance {
-    fun discoverServer() {
-        TODO("Not yet implemented")
+
+    private const val TAG = "RetrofitInstance"
+    private const val PORT = 8000
+
+    // Nombre mDNS anunciado por el backend con zeroconf
+    private const val MDNS_HOST = "iot-platform.local"
+
+    // IPs de fallback: agrega aquí las IPs más comunes de tu red local.
+    // El primer intento siempre es mDNS; estas se prueban en orden si falla.
+    private val FALLBACK_IPS = listOf(
+        "192.168.1.100",   // ← cambia a la IP de tu PC/servidor
+        "192.168.0.100",
+        "192.168.1.1",
+        "10.0.0.100",
+        "10.0.2.2"         // emulador Android
+    )
+
+    @Volatile
+    private var _api: ApiService? = null
+
+    // Acceso directo al api ya construido (o construye con mDNS por defecto)
+    val api: ApiService
+        get() = _api ?: buildApi("http://$MDNS_HOST:$PORT/")
+
+    /**
+     * Intenta descubrir el servidor en la red local.
+     * Primero prueba mDNS (iot-platform.local), luego las IPs de fallback.
+     * Devuelve true si encontró el servidor.
+     * Debe llamarse desde una coroutine (usa Dispatchers.IO internamente).
+     */
+    suspend fun discoverServer(): Boolean = withContext(Dispatchers.IO) {
+        Log.i(TAG, "Buscando servidor IoT en la red local...")
+
+        // 1. Intentar mDNS
+        if (tryConnect("http://$MDNS_HOST:$PORT")) {
+            Log.i(TAG, "✅ Servidor encontrado via mDNS: $MDNS_HOST")
+            buildApi("http://$MDNS_HOST:$PORT/")
+            return@withContext true
+        }
+
+        // 2. Intentar IPs de fallback
+        for (ip in FALLBACK_IPS) {
+            if (tryConnect("http://$ip:$PORT")) {
+                Log.i(TAG, "✅ Servidor encontrado en IP: $ip")
+                buildApi("http://$ip:$PORT/")
+                return@withContext true
+            }
+        }
+
+        Log.w(TAG, "❌ No se encontró el servidor en ninguna IP conocida")
+        false
     }
 
-    // Para emulador Android: 10.0.2.2
-    // Para dispositivo físico: tu IP local (ej: 192.168.1.100)
-    private const val BASE_URL = "http://10.0.2.2:8000/"
-    // private const val BASE_URL = "http://192.168.1.100:8000/"
+    private fun tryConnect(baseUrl: String): Boolean {
+        return try {
+            val client = OkHttpClient.Builder()
+                .connectTimeout(2, TimeUnit.SECONDS)
+                .readTimeout(3, TimeUnit.SECONDS)
+                .build()
+            val response = client
+                .newCall(Request.Builder().url("$baseUrl/health").build())
+                .execute()
+            response.isSuccessful
+        } catch (e: Exception) {
+            false
+        }
+    }
 
-    private val client = OkHttpClient.Builder()
-        .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
-        })
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(30, TimeUnit.SECONDS)
-        .writeTimeout(30, TimeUnit.SECONDS)
-        .build()
+    private fun buildApi(baseUrl: String): ApiService {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(HttpLoggingInterceptor().apply {
+                level = HttpLoggingInterceptor.Level.BODY
+            })
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .build()
 
-    val api: ApiService by lazy {
-        Retrofit.Builder()
-            .baseUrl(BASE_URL)
+        return Retrofit.Builder()
+            .baseUrl(baseUrl)
             .client(client)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(ApiService::class.java)
+            .also { _api = it }
     }
-    object RetrofitInstance {
-        // Nombre mDNS del servidor (anunciado por zeroconf en el backend)
-        private const val MDNS_HOST = "iot-platform.local"
-        private const val PORT = 8000
-
-        // IPs de fallback si mDNS no funciona
-        // Agrega aqui las IPs mas comunes de tu red
-        private val FALLBACK_IPS = listOf(
-            "192.168.1.100",  // Cambia segun tu router
-            "192.168.0.100",
-            "10.0.0.100",
-            "10.0.2.2"        // Emulador Android
-        )
-
-        @Volatile private var _api: ApiService? = null
-        @Volatile private var resolvedBaseUrl: String? = null
-
-        val api: ApiService
-            get() = _api ?: createApi("http://$MDNS_HOST:$PORT/")
-
-        private fun createApi(baseUrl: String): ApiService {
-            val client = OkHttpClient.Builder()
-                .addInterceptor(HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.BODY
-                })
-                .connectTimeout(5, TimeUnit.SECONDS)
-                .readTimeout(30, TimeUnit.SECONDS)
-                .build()
-            return Retrofit.Builder()
-                .baseUrl(baseUrl)
-                .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
-                .build()
-                .create(ApiService::class.java)
-                .also { _api = it }
-        }
-
-        // Llamar esto desde ViewModel antes de la primera peticion
-        suspend fun discoverServer(): Boolean {
-            // Intentar mDNS primero
-            return try {
-                val url = "http://$MDNS_HOST:$PORT/health"
-                val result = okhttp3.OkHttpClient.Builder()
-                    .connectTimeout(3, TimeUnit.SECONDS).build()
-                    .newCall(okhttp3.Request.Builder().url(url).build())
-                    .execute()
-                if (result.isSuccessful) {
-                    createApi("http://$MDNS_HOST:$PORT/")
-                    true
-                } else tryFallbacks()
-            } catch (e: Exception) { tryFallbacks() }
-        }
-
-        private fun tryFallbacks(): Boolean {
-            for (ip in FALLBACK_IPS) {
-                try {
-                    val result = okhttp3.OkHttpClient.Builder()
-                        .connectTimeout(2, TimeUnit.SECONDS).build()
-                        .newCall(okhttp3.Request.Builder()
-                            .url("http://$ip:$PORT/health").build())
-                        .execute()
-                    if (result.isSuccessful) {
-                        createApi("http://$ip:$PORT/")
-                        return true
-                    }
-                } catch (e: Exception) { /* continuar */ }
-            }
-            return false
-        }
-    }
-
 }
