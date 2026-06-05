@@ -19,7 +19,7 @@ object RetrofitInstance {
     private const val MDNS_HOST = "iot-platform.local"
 
     private val FALLBACK_IPS = listOf(
-        "192.168.1.75",   // ← cambia a la IP de tu PC/servidor
+        "192.168.15.11",   // ← cambia a la IP de tu PC/servidor
         "192.168.0.100",
         "192.168.1.1",
         "10.0.0.100",
