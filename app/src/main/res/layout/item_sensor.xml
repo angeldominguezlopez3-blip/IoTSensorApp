@@ -1,52 +1,119 @@
 <?xml version="1.0" encoding="utf-8"?>
-<com.google.android.material.card.MaterialCardView xmlns:android="http://schemas.android.com/apk/res/android"
+<androidx.cardview.widget.CardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    app:cardElevation="2dp"
-    android:layout_marginBottom="8dp">
+    android:layout_marginHorizontal="16dp"
+    android:layout_marginVertical="4dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="2dp">
 
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="12dp"
+        android:gravity="center_vertical">
 
+        <!-- Columna izquierda: tiempo y presencia -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_weight="2"
+            android:layout_weight="1"
             android:orientation="vertical">
 
             <TextView
-                android:id="@+id/textTemperature"
-                android:text="--°C"
-                android:textSize="20sp"
-                android:textStyle="bold" />
+                android:id="@+id/textTime"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--:--"
+                android:textSize="12sp"
+                android:textColor="?attr/colorOnSurface"
+                android:alpha="0.6"/>
 
             <TextView
-                android:id="@+id/textSound"
-                android:text="🔊 --%"
-                android:textSize="14sp" />
+                android:id="@+id/textPresence"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⬤ Ausente"
+                android:textSize="12sp"
+                android:layout_marginTop="2dp"/>
+
         </LinearLayout>
 
+        <!-- Temperatura -->
         <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:orientation="vertical"
-            android:gravity="end">
+            android:gravity="center">
 
             <TextView
-                android:id="@+id/textPresence"
-                android:text="👤 --"
-                android:textSize="14sp" />
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🌡️"
+                android:textSize="16sp"/>
 
             <TextView
-                android:id="@+id/textTime"
-                android:text="--:--"
-                android:textSize="12sp"
-                android:textColor="@android:color/darker_gray" />
+                android:id="@+id/textTemperature"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="--°C"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
         </LinearLayout>
+
+        <!-- Sonido -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔊"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/textSound"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="-- dB"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+
+        </LinearLayout>
+
+        <!-- Nivel de estrés -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <TextView
+                android:id="@+id/textStressLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="😊"
+                android:textSize="16sp"/>
+
+            <TextView
+                android:id="@+id/textStress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Normal"
+                android:textSize="11sp"/>
+
+        </LinearLayout>
+
     </LinearLayout>
-</com.google.android.material.card.MaterialCardView>
+
+</androidx.cardview.widget.CardView>
