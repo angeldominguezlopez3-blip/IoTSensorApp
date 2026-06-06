@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="🔒 Privacidad y Consentimiento"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:textColor="#1F4E79"
+            android:gravity="center"
+            android:layout_marginBottom="4dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Monitor de Estrés Ambiental"
+            android:textSize="14sp"
+            android:textColor="#808080"
+            android:gravity="center"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Qué datos recopilamos -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="#EBF3FB"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="📋 ¿Qué datos recopilamos?"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🌡️  Temperatura ambiental — no personal"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🔊  Nivel de sonido — no personal"
+                    android:textSize="13sp"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="⚠️  Detección de presencia — potencialmente personal"
+                    android:textSize="13sp"
+                    android:textColor="#E65100"
+                    android:layout_marginBottom="4dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🔴  Nivel de estrés inferido por IA — dato sensible de salud"
+                    android:textSize="13sp"
+                    android:textColor="#C62828"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Para qué usamos los datos -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="#F3E5F5"
+            android:layout_marginBottom="12dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="🎯 ¿Para qué usamos los datos?"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="• Monitoreo ambiental en tiempo real\n• Detección de estrés con inteligencia artificial\n• Generación de consejos de bienestar\n• Investigación académica (con tu autorización)"
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.4"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Derechos ARCO -->
+        <com.google.android.material.card.MaterialCardView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            app:cardElevation="2dp"
+            app:cardBackgroundColor="#E8F5E9"
+            android:layout_marginBottom="16dp">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:padding="16dp">
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="✅ Tus derechos ARCO"
+                    android:textStyle="bold"
+                    android:textSize="15sp"
+                    android:layout_marginBottom="8dp"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="Puedes Acceder, Rectificar, Cancelar y Oponerte al tratamiento de tus datos en cualquier momento desde Ajustes → Eliminar mis datos.\n\nRetención máxima: 6 meses. Eliminación en 72 horas."
+                    android:textSize="13sp"
+                    android:lineSpacingMultiplier="1.4"/>
+
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <!-- Botón leer aviso completo -->
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonReadPrivacy"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="📄 Leer Aviso de Privacidad Completo"
+            android:layout_marginBottom="20dp"
+            style="@style/Widget.Material3.Button.OutlinedButton"/>
+
+        <!-- Checkbox consentimiento -->
+        <com.google.android.material.checkbox.MaterialCheckBox
+            android:id="@+id/checkboxConsent"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="He leído y acepto el Aviso de Privacidad. Doy mi consentimiento explícito para el tratamiento de mis datos conforme a la LFPDPPP y el GDPR."
+            android:textSize="13sp"
+            android:layout_marginBottom="12dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonAccept"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="✅ Acepto y continuar"
+            android:layout_marginBottom="8dp"/>
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/buttonReject"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="❌ No acepto"
+            style="@style/Widget.Material3.Button.TextButton"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Cumple: LFPDPPP · GDPR · AI Act / NIST AI RMF"
+            android:textSize="11sp"
+            android:textColor="#9E9E9E"
+            android:gravity="center"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>
