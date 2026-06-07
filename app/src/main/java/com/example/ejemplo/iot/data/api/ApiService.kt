@@ -21,6 +21,11 @@ interface ApiService {
     @POST("api/ia/train")
     suspend fun trainModel(): Map<String, String>
 
+    @POST("api/sensors/")
+    suspend fun createSensorReading(
+        @Body body: Map<String, @JvmSuppressWildcards Any>
+    ): Map<String, String>
+
     @GET("api/android/stats")
     suspend fun getStatistics(): Statistics
 

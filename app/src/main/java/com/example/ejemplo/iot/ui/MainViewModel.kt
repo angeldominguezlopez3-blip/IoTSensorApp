@@ -50,6 +50,25 @@ class MainViewModel : ViewModel() {
         else -> NivelEstres.BAJO
     }
 
+    fun sendBluetoothDataToBackend(temperatura: Float, sonido: Int, presencia: Boolean) {
+        viewModelScope.launch {
+            if (_serverFound.value != true) return@launch
+            try {
+                RetrofitInstance.api.createSensorReading(
+                    mapOf(
+                        "temperatura" to temperatura,
+                        "sonido" to sonido,
+                        "presencia" to presencia
+                    )
+                )
+                // Recargar datos para que aparezca en historial
+                loadData()
+            } catch (e: Exception) {
+                // Silencioso — no interrumpir la UI por un fallo de envío
+            }
+        }
+    }
+
     fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
@@ -67,7 +86,7 @@ class MainViewModel : ViewModel() {
 
             try {
                 val api = RetrofitInstance.api
-                val readings = api.getLatestReadings(200)
+                val readings = api.getLatestReadings(100)
                 val advice = api.getIAAdvice(10)
                 val stats = api.getStatistics()
 

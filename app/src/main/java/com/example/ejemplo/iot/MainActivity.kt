@@ -204,9 +204,17 @@ class MainActivity : AppCompatActivity() {
         lifecycleScope.launch {
             bluetoothService.sensorData.collect { data ->
                 if (data.temperatura != 0f || data.sonido > 0) {
+                    // Actualizar UI con datos Bluetooth
                     binding.textBluetoothTemp.text = "Temp BT: ${String.format("%.1f", data.temperatura)}°C"
                     binding.textBluetoothSound.text = "Ruido BT: ${data.sonido}%"
                     binding.textBluetoothPresence.text = if (data.presencia) "👤 Detectado" else "👤 Sin presencia"
+
+                    // Enviar automáticamente al backend y Firestore
+                    viewModel.sendBluetoothDataToBackend(
+                        temperatura = data.temperatura,
+                        sonido = data.sonido,
+                        presencia = data.presencia
+                    )
                 }
             }
         }
