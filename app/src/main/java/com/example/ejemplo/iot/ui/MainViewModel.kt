@@ -8,11 +8,15 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import java.util.Calendar
 
 class MainViewModel : ViewModel() {
 
     private val _sensorReadings = MutableStateFlow<List<SensorReading>>(emptyList())
     val sensorReadings: StateFlow<List<SensorReading>> = _sensorReadings.asStateFlow()
+
+    private val _weeklyStats = MutableStateFlow<WeeklyStats?>(null)
+    val weeklyStats: StateFlow<WeeklyStats?> = _weeklyStats.asStateFlow()
 
     private val _iaAdvice = MutableStateFlow<List<IAAdvice>>(emptyList())
     val iaAdvice: StateFlow<List<IAAdvice>> = _iaAdvice.asStateFlow()
@@ -29,17 +33,33 @@ class MainViewModel : ViewModel() {
     private val _serverFound = MutableStateFlow<Boolean?>(null)
     val serverFound: StateFlow<Boolean?> = _serverFound.asStateFlow()
 
+    // Niveles de estrés
+    enum class NivelEstres { BAJO, MEDIO, CRITICO }
+
+    data class WeeklyStats(
+        val nivelMayoritario: NivelEstres,
+        val countBajo: Int,
+        val countMedio: Int,
+        val countCritico: Int,
+        val totalReadings: Int
+    )
+
+    fun calcularNivel(temp: Float, sonido: Int): NivelEstres = when {
+        temp >= 30 || sonido >= 75 -> NivelEstres.CRITICO
+        temp >= 26 || sonido >= 55 -> NivelEstres.MEDIO
+        else -> NivelEstres.BAJO
+    }
+
     fun loadData() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value = null
 
-            // Descubrir el servidor si aún no se ha encontrado
             if (_serverFound.value != true) {
                 val found = RetrofitInstance.discoverServer()
                 _serverFound.value = found
                 if (!found) {
-                    _error.value = "No se encontró el servidor en la red local. Verifica que el backend esté corriendo."
+                    _error.value = "No se encontró el servidor. Verifica que Docker esté corriendo."
                     _isLoading.value = false
                     return@launch
                 }
@@ -47,60 +67,79 @@ class MainViewModel : ViewModel() {
 
             try {
                 val api = RetrofitInstance.api
-                val readings = api.getLatestReadings(100)
+                val readings = api.getLatestReadings(200)
                 val advice = api.getIAAdvice(10)
                 val stats = api.getStatistics()
 
-                _sensorReadings.value = readings
+                // Filtrar últimos 7 días
+                val hace7dias = Calendar.getInstance().apply {
+                    add(Calendar.DAY_OF_YEAR, -7)
+                }.time
+
+                val readingsSemana = readings.filter {
+                    it.timestamp.after(hace7dias)
+                }
+
+                _sensorReadings.value = readingsSemana
                 _iaAdvice.value = advice
                 _statistics.value = stats
+
+                // Calcular estadísticas semanales
+                calcularEstadisticasSemanales(readingsSemana)
+
             } catch (e: Exception) {
                 _error.value = "Error al cargar datos: ${e.message}"
-                // Resetear para reintentar discovery en el siguiente loadData()
                 _serverFound.value = null
-                e.printStackTrace()
             } finally {
                 _isLoading.value = false
             }
         }
     }
 
+    private fun calcularEstadisticasSemanales(readings: List<SensorReading>) {
+        if (readings.isEmpty()) return
+
+        var bajo = 0; var medio = 0; var critico = 0
+
+        readings.forEach { r ->
+            when (calcularNivel(r.temperatura, r.sonido)) {
+                NivelEstres.BAJO -> bajo++
+                NivelEstres.MEDIO -> medio++
+                NivelEstres.CRITICO -> critico++
+            }
+        }
+
+        val mayoritario = when {
+            critico >= medio && critico >= bajo -> NivelEstres.CRITICO
+            medio >= bajo -> NivelEstres.MEDIO
+            else -> NivelEstres.BAJO
+        }
+
+        _weeklyStats.value = WeeklyStats(
+            nivelMayoritario = mayoritario,
+            countBajo = bajo,
+            countMedio = medio,
+            countCritico = critico,
+            totalReadings = readings.size
+        )
+    }
+
     fun loadAdvice() {
         viewModelScope.launch {
             if (_serverFound.value != true) return@launch
             try {
-                val advice = RetrofitInstance.api.getIAAdvice(10)
-                _iaAdvice.value = advice
-            } catch (e: Exception) {
-                // Silencioso: no interrumpir la UI por un fallo de polling
-            }
+                _iaAdvice.value = RetrofitInstance.api.getIAAdvice(10)
+            } catch (e: Exception) { }
         }
     }
 
-    fun triggerAnalysis(readingId: String? = null) {
+    fun triggerAnalysis() {
         viewModelScope.launch {
             try {
                 val result = RetrofitInstance.api.analyzeLatestData()
-                if (result.esAnomalia) {
-                    _error.value = "⚠️ ${result.consejo}"
-                } else {
-                    _error.value = "✅ Análisis completado: ${result.consejo}"
-                }
+                _error.value = if (result.esAnomalia) "⚠️ ${result.consejo}" else "✅ ${result.consejo}"
             } catch (e: Exception) {
                 _error.value = "Error en análisis: ${e.message}"
-            }
-        }
-    }
-
-    fun loadWeeklyHistory() {
-        viewModelScope.launch {
-            if (_serverFound.value != true) return@launch
-            try {
-                // Trae las últimas 100 lecturas para cubrir una semana
-                val readings = RetrofitInstance.api.getLatestReadings(100)
-                _sensorReadings.value = readings
-            } catch (e: Exception) {
-                // silencioso
             }
         }
     }
@@ -108,11 +147,10 @@ class MainViewModel : ViewModel() {
     fun triggerTraining() {
         viewModelScope.launch {
             try {
-                // POST /api/ia/train — inicia entrenamiento en background en el servidor
                 RetrofitInstance.api.trainModel()
-                _error.value = "✅ Entrenamiento iniciado en el servidor"
+                _error.value = "✅ Entrenamiento iniciado"
             } catch (e: Exception) {
-                _error.value = "Error al iniciar entrenamiento: ${e.message}"
+                _error.value = "Error al entrenar: ${e.message}"
             }
         }
     }

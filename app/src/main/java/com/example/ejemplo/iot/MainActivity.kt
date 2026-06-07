@@ -89,6 +89,25 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         }
+        lifecycleScope.launch {
+            viewModel.weeklyStats.collect { stats ->
+                stats?.let {
+                    // Nivel mayoritario
+                    val (emoji, label, color) = when (it.nivelMayoritario) {
+                        MainViewModel.NivelEstres.CRITICO -> Triple("🔴", "Crítico", android.graphics.Color.parseColor("#C62828"))
+                        MainViewModel.NivelEstres.MEDIO -> Triple("🟡", "Medio", android.graphics.Color.parseColor("#F57F17"))
+                        MainViewModel.NivelEstres.BAJO -> Triple("🟢", "Bajo", android.graphics.Color.parseColor("#2E7D32"))
+                    }
+                    binding.textWeeklyEmoji.text = emoji
+                    binding.textWeeklyLevel.text = label
+                    binding.textWeeklyLevel.setTextColor(color)
+                    binding.textWeeklyTotal.text = "${it.totalReadings} lecturas"
+                    binding.textCountBajo.text = it.countBajo.toString()
+                    binding.textCountMedio.text = it.countMedio.toString()
+                    binding.textCountCritico.text = it.countCritico.toString()
+                }
+            }
+        }
 
         lifecycleScope.launch {
             viewModel.iaAdvice.collect { advice ->
