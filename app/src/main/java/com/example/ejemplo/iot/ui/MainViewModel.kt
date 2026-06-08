@@ -12,6 +12,8 @@ import java.util.Calendar
 
 class MainViewModel : ViewModel() {
 
+    private val _analysisResult = MutableStateFlow<IAAnalysis?>(null)
+    val analysisResult: StateFlow<IAAnalysis?> = _analysisResult.asStateFlow()
     private val _sensorReadings = MutableStateFlow<List<SensorReading>>(emptyList())
     val sensorReadings: StateFlow<List<SensorReading>> = _sensorReadings.asStateFlow()
 
@@ -156,7 +158,7 @@ class MainViewModel : ViewModel() {
         viewModelScope.launch {
             try {
                 val result = RetrofitInstance.api.analyzeLatestData()
-                _error.value = if (result.esAnomalia) "⚠️ ${result.consejo}" else "✅ ${result.consejo}"
+                _analysisResult.value = result
             } catch (e: Exception) {
                 _error.value = "Error en análisis: ${e.message}"
             }

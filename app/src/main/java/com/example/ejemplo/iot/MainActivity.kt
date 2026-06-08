@@ -110,8 +110,39 @@ class MainActivity : AppCompatActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.iaAdvice.collect { advice ->
-                if (advice.isNotEmpty()) binding.textLatestAdvice.text = advice[0].mensaje
+            viewModel.analysisResult.collect { result ->
+                result?.let {
+                    binding.cardAnalysis.visibility = android.view.View.VISIBLE
+
+                    val (emoji, label, color) = when {
+                        it.esAnomalia && it.severidad == "critical" ->
+                            Triple("🔴", "Crítico", android.graphics.Color.parseColor("#C62828"))
+                        it.esAnomalia ->
+                            Triple("🟡", "Medio", android.graphics.Color.parseColor("#F57F17"))
+                        else ->
+                            Triple("🟢", "Bajo", android.graphics.Color.parseColor("#2E7D32"))
+                    }
+
+                    binding.textAnalysisIcon.text = emoji
+                    binding.textAnalysisLevel.text = label
+                    binding.textAnalysisLevel.setTextColor(color)
+                    binding.textAnalysisConfidence.text = "${(it.confianza * 100).toInt()}%"
+                    binding.textAnalysisConfidence.setTextColor(color)
+                    binding.textAnalysisAdvice.text = it.consejo
+                    binding.buttonAnalyze.isEnabled = true
+                    binding.buttonAnalyze.text = "Analizar IA"
+
+                    // Color de fondo de la tarjeta según nivel
+                    val bgColor = when {
+                        it.esAnomalia && it.severidad == "critical" ->
+                            android.graphics.Color.parseColor("#FFEBEE")
+                        it.esAnomalia ->
+                            android.graphics.Color.parseColor("#FFF8E1")
+                        else ->
+                            android.graphics.Color.parseColor("#F1F8E9")
+                    }
+                    binding.cardAnalysis.setCardBackgroundColor(bgColor)
+                }
             }
         }
 
@@ -307,6 +338,13 @@ class MainActivity : AppCompatActivity() {
         }
         binding.buttonRefreshApi.setOnClickListener {
             viewModel.loadData()
+        }
+        binding.buttonAnalyze.setOnClickListener {
+            binding.cardAnalysis.visibility = android.view.View.GONE
+            binding.buttonAnalyze.isEnabled = false
+            binding.buttonAnalyze.text = "Analizando..."
+            viewModel.triggerAnalysis()
+            Toast.makeText(this, "Analizando con IA...", Toast.LENGTH_SHORT).show()
         }
     }
 
