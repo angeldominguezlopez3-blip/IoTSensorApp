@@ -19,12 +19,8 @@ object RetrofitInstance {
     private const val TAG = "RetrofitInstance"
     private const val PORT = 8000
 
-    private val FALLBACK_IPS = listOf(
-        "192.168.1.92",   // ← Tu IP real de la PC con Docker
-        "192.168.1.1",
-        "192.168.1.100",
-        "10.0.2.2"
-    )
+    // ★ Cambia esta URL cada vez que reinicies ngrok
+    private const val NGROK_URL = "https://flaky-endowment-renounce.ngrok-free.dev"
 
     @Volatile private var _api: ApiService? = null
 
@@ -34,7 +30,18 @@ object RetrofitInstance {
     suspend fun discoverServer(): Boolean = withContext(Dispatchers.IO) {
         Log.i(TAG, "Iniciando discovery...")
 
-        // Intentar primero la IP conocida directamente
+        // 1️⃣ Intentar ngrok primero (funciona en cualquier red)
+        if (NGROK_URL.isNotBlank() && !NGROK_URL.contains("abc123")) {
+            Log.i(TAG, "Probando ngrok: $NGROK_URL")
+            if (tryConnect(NGROK_URL)) {
+                Log.i(TAG, "✅ Servidor en ngrok: $NGROK_URL")
+                buildApi("$NGROK_URL/")
+                return@withContext true
+            }
+            Log.w(TAG, "ngrok no respondió, intentando red local...")
+        }
+
+        // 2️⃣ IP fija conocida (red de casa)
         val knownIPs = listOf("192.168.1.92", "10.0.2.2")
         for (ip in knownIPs) {
             if (tryConnect("http://$ip:$PORT")) {
@@ -44,11 +51,14 @@ object RetrofitInstance {
             }
         }
 
-        // Luego escanear la red automáticamente
+        // 3️⃣ Escaneo automático de la red local
         val localIp = getLocalIpAddress()
         Log.i(TAG, "IP local del celular: $localIp")
 
-        if (localIp == null) return@withContext false
+        if (localIp == null) {
+            Log.w(TAG, "❌ No se pudo obtener IP local")
+            return@withContext false
+        }
 
         val prefix = localIp.substringBeforeLast(".")
         val priority = listOf(
@@ -65,7 +75,9 @@ object RetrofitInstance {
             }
         }
 
-        val allIPs = (1..254).map { "$prefix.$it" }.filter { it != localIp && it !in priority }
+        val allIPs = (1..254).map { "$prefix.$it" }
+            .filter { it != localIp && it !in priority }
+
         allIPs.chunked(30).forEach { chunk ->
             val results = chunk.map { ip ->
                 async { if (tryConnect("http://$ip:$PORT")) ip else null }
@@ -78,7 +90,7 @@ object RetrofitInstance {
             }
         }
 
-        Log.w(TAG, "❌ No encontrado")
+        Log.w(TAG, "❌ Servidor no encontrado en ninguna red")
         false
     }
 
@@ -102,11 +114,13 @@ object RetrofitInstance {
     private fun tryConnect(baseUrl: String): Boolean {
         return try {
             val client = OkHttpClient.Builder()
-                .connectTimeout(800, TimeUnit.MILLISECONDS)
-                .readTimeout(1, TimeUnit.SECONDS)
+                .connectTimeout(2, TimeUnit.SECONDS)
+                .readTimeout(2, TimeUnit.SECONDS)
                 .build()
+            val url = if (baseUrl.startsWith("https")) "$baseUrl/health"
+            else "$baseUrl/health"
             val response = client
-                .newCall(Request.Builder().url("$baseUrl/health").build())
+                .newCall(Request.Builder().url(url).build())
                 .execute()
             response.use { it.isSuccessful }
         } catch (e: Exception) {
